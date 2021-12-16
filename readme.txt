@@ -14,11 +14,11 @@ License:           GNU General Public License v2 (or later)
 License URI:       http://www.gnu.org/licenses/gpl-2.0.html
 Tags:              extension, torro forms, forms, form builder, api
 
-Torro Forms Plugin to intergare with aXcelerate.
+Torro Forms Plugin to create contact in aXcelerate SMS.
 
 == Description ==
 
-> This is an extension for the [Torro Forms](https://wordpress.org/plugins/torro-forms/) plugin. You need to have it enabled in order to run this plugin.
+> This is an extension for the [Torro Forms](https://wordpress.org/plugins/torro-forms/) plugin which allows to create contact in aXcelerate SMS on form submission. You need to have it enabled in order to run this plugin.
 
 **TODO:** Detailed plugin description goes here.
 

@@ -8,7 +8,7 @@
  * @wordpress-plugin
  * Plugin Name: Torro Forms Plugin aXcelerate
  * Plugin URI:  https://github.com/vtsr60/torro-forms-axcelerate
- * Description: Torro Forms Plugin to interrogate with aXcelerate.
+ * Description: Torro Forms Plugin create contact in aXcelerate SMS.
  * Version:     1.0.0
  * Author:      Raj Vivakaran
  * Author URI:  https://github.com/vtsr60
@@ -16,7 +16,7 @@
  * License URI: http://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain: torro-forms-axcelerate
  * Domain Path: /languages/
- * Tags:        extension, torro forms, forms, form builder, api
+ * Tags:        extension, torro forms, forms, form builder, api, aXcelerate
  */
 
 defined( 'ABSPATH' ) || exit;

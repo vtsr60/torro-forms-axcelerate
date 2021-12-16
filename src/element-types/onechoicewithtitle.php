@@ -1,8 +1,8 @@
 <?php
 /**
- * Dropdown element type class
+ * One choice with title element type class
  *
- * @package TorroForms
+ * @package TorroFormsaXcelerate
  * @since 1.0.0
  */
 
@@ -12,7 +12,7 @@ use awsmug\Torro_Forms\DB_Objects\Elements\Element_Types\Base\Onechoice;
 use TFaXcelerate\TorroFormsaXcelerate\Title_Choice_Element_Type_Trait;
 
 /**
- * Class representing a dropdown element type.
+ * Class representing a one choice with title element type.
  *
  * @since 1.0.0
  */

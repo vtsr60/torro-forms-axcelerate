@@ -1,10 +1,10 @@
 <?php
 /**
- * Template: element-onechoice.php
+ * Template: element-onechoicewithtitle.php
  *
  * Available data: $id, $container_id, $label, $sort, $type, $value, $input_attrs, $label_required, $label_attrs, $wrap_attrs, $description, $description_attrs, $errors, $errors_attrs, $before, $after, $choices, $legend_attrs
  *
- * @package TorroForms
+ * @package TorroFormsaXcelerate
  * @since 1.0.0
  */
 

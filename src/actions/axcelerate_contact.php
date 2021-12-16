@@ -1,8 +1,8 @@
 <?php
 /**
- * Frontend posting action class
+ * AXcelerate Contact action class
  *
- * @package TorroForms
+ * @package TorroFormsaXcelerate
  * @since 1.1.0
  */
 
@@ -14,17 +14,16 @@ use awsmug\Torro_Forms\Modules\Actions\Action;
 use awsmug\Torro_Forms\DB_Objects\Forms\Form;
 use awsmug\Torro_Forms\DB_Objects\Submissions\Submission;
 use awsmug\Torro_Forms\Modules\Assets_Submodule_Interface;
-use Leaves_And_Love\Plugin_Lib\DB_Objects\Traits\Capability_Manager_Trait;
-use Leaves_And_Love\Plugin_Lib\DB_Objects\Traits\Meta_Manager_Trait;
 use Leaves_And_Love\Plugin_Lib\Fixes;
 use WP_Error;
 
 /**
- * Class for an action that creates WordPress posts from the frontend via the REST API.
+ * Class for an action that creates aXcelerate contact record via the aXcelerate REST API.
  *
  * @since 1.1.0
  */
-class AXcelerate_Contact extends Action implements Assets_Submodule_Interface {
+class AXcelerate_Contact extends Action implements Assets_Submodule_Interface
+{
 
 	const CONTACT_PATH = '/contact/';
 
@@ -41,22 +40,24 @@ class AXcelerate_Contact extends Action implements Assets_Submodule_Interface {
 	 *
 	 * @since 1.0.0
 	 */
-	protected function bootstrap() {
-		$this->slug  = 'axcelerate_contact';
-		$this->title = __( 'aXcelerate Contact Create', 'torro-forms' );
+	protected function bootstrap()
+	{
+		$this->slug = 'axcelerate_contact';
+		$this->title = __('aXcelerate Contact Create', 'torro-forms');
+		$this->description = __('On submission of this form aXcelerate contact record can be created by sending submission data.', 'torro-forms');
 		$this->register_template_tag_handlers();
 	}
 
 	/**
 	 * Handles the action for a specific form submission.
 	 *
+	 * @param Submission $submission Submission to handle by the action.
+	 * @param Form $form Form the submission applies to.
+	 * @return bool|WP_Error True on success, error object on failure.
 	 * @since 1.0.0
 	 *
-	 * @param Submission $submission Submission to handle by the action.
-	 * @param Form       $form       Form the submission applies to.
-	 * @return bool|WP_Error True on success, error object on failure.
 	 */
-	public function handle( $submission, $form )
+	public function handle($submission, $form)
 	{
 		$enabled = $this->get_form_option($form->id, 'enabled', array());
 		if (!$enabled) {
@@ -93,25 +94,27 @@ class AXcelerate_Contact extends Action implements Assets_Submodule_Interface {
 			),
 			'body' => $payload
 		);
-		var_dump($payload);die();
-		$response = wp_remote_post( $endpoint, $request );
-		$response_code = (int) wp_remote_retrieve_response_code( $response );
-		$response_body = json_decode( wp_remote_retrieve_body( $response ) , true );
-		$contactCreated = !is_wp_error( $response ) && 200 == $response_code
+
+		$response = wp_remote_post($endpoint, $request);
+		$response_code = (int)wp_remote_retrieve_response_code($response);
+		$response_body = json_decode(wp_remote_retrieve_body($response), true);
+		$contactCreated = !is_wp_error($response) && 200 == $response_code
 			&& isset($response_body) && !isset($response_body['ERROR']);
 
 		$notifications = $this->get_form_option($form->id, 'responsenotifications', array());
 		$message = $contactCreated
-		? "SUCCESSFULLY created Contact record in AXcelerate\n\n"
-		: "FAILED to create Contact record in AXcelerate\n\n";
+			? "SUCCESSFULLY created Contact record in AXcelerate\n\n"
+			: "FAILED to create Contact record in AXcelerate\n\n";
 		$message .= "*********************************************************\nREQUEST:\n-------------------\n"
-			.json_encode($payload, JSON_PRETTY_PRINT)."\n\n";
+			. json_encode($payload, JSON_PRETTY_PRINT) . "\n\n";
 		$message .= "*********************************************************\nRESPONSE:\n-------------------\n"
-			.json_encode($response_body, JSON_PRETTY_PRINT)."\n\n";
+			. json_encode($response_body, JSON_PRETTY_PRINT) . "\n\n";
 		$message .= "*********************************************************\n";
 
-		foreach ( $notifications as $notification ) {
-			if ( empty( $notification['to_email'] ) || empty( $notification['subject'] ) || empty( $notification['notification_type'] ) ) {
+		foreach ($notifications as $notification) {
+			$message = $this->wrap_message(wpautop($message), $notification['subject']);
+
+			if (empty($notification['to_email']) || empty($notification['subject']) || empty($notification['notification_type'])) {
 				continue;
 			}
 			if (($notification['notification_type'] == 'failed' && $contactCreated)
@@ -120,72 +123,101 @@ class AXcelerate_Contact extends Action implements Assets_Submodule_Interface {
 			}
 			$headers = array();
 			if (!empty($notification['cc_email'])) {
-				$headers[] = "Cc:".trim($notification['cc_email']);
+				$headers[] = "Cc:" . trim($notification['cc_email']);
 			}
-			@wp_mail( $notification['to_email'], $notification['subject'], $message, $headers );
+			@wp_mail($notification['to_email'], $notification['subject'], $message, $headers);
 		}
 
 		return true;
 	}
 
+
+	/**
+	 * Wraps the message in valid presentational HTML markup.
+	 *
+	 * @param string $message HTML message to wrap.
+	 * @param string $title Optional. String to use in the title tag. Default empty string for no title.
+	 * @return string Wrapped HTML message.
+	 * @since 1.0.0
+	 *
+	 */
+	protected function wrap_message($message, $title = '')
+	{
+		$before = '<!DOCTYPE html>';
+		$before .= '<html>';
+		$before .= '<head>';
+		$before .= '<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />';
+		if (!empty($title)) {
+			$before .= '<title>' . esc_html($title) . '</title>';
+		}
+		$before .= '</head>';
+		$before .= '<body>';
+
+		$after = '</body>';
+		$after .= '</html>';
+
+		return $before . $message . $after;
+	}
+
 	/**
 	 * Returns the available meta fields for the submodule.
 	 *
+	 * @return array Associative array of `$field_slug => $field_args` pairs.
 	 * @since 1.0.0
 	 *
-	 * @return array Associative array of `$field_slug => $field_args` pairs.
 	 */
-	public function get_meta_fields() {
+	public function get_meta_fields()
+	{
 		$meta_fields = parent::get_meta_fields();
-		$meta_fields['enabled']['visual_label'] = _x( 'Create contact on submission', 'action', 'torro-forms' );
+		$meta_fields['enabled']['visual_label'] = _x('Create contact on submission', 'action', 'torro-forms');
 
 		$contactFields = array();
 		foreach ($this->get_contact_fields() as $field => $desc) {
 			$contactFields[$field] = array(
-				'type'                 => 'templatetagtext',
-				'label'                => __( preg_replace('~([a-z])([A-Z])~', '\\1 \\2',ucfirst($field)), 'torro-forms' ),
+				'type' => 'templatetagtext',
+				'label' => __(preg_replace('~([a-z])([A-Z])~', '\\1 \\2', ucfirst($field)), 'torro-forms'),
 				/* translators: %s: email address */
-				'description'          => __( $desc, 'torro-forms' ),
-				'input_classes'        => array( 'regular-text' ),
+				'description' => __($desc, 'torro-forms'),
+				'input_classes' => array('regular-text'),
 				'template_tag_handler' => $this->template_tag_handler,
 			);
 		}
 
 		$meta_fields['fieldsmapping'] = array(
-			'type'       => 'group',
-			'label'      => __( 'Fields Mapping', 'torro-forms' ),
-			'fields'     => $contactFields
+			'type' => 'group',
+			'label' => __('Fields Mapping', 'torro-forms'),
+			'fields' => $contactFields
 		);
 
 		$meta_fields['responsenotifications'] = array(
-			'type'       => 'group',
-			'label'      => __( 'Response Notifications', 'torro-forms' ),
+			'type' => 'group',
+			'label' => __('Response Notifications', 'torro-forms'),
 			'repeatable' => 8,
-			'fields'     => array(
-				'notification_type'    => array(
-						'type'    => 'select',
-						'label'   => __( 'Notification Type', 'torro-forms' ),
-						'choices' => array(
-						'failed'   => __( 'Only if contact creation failed', 'torro-forms' ),
-						'success' => __( 'Only if contact was created', 'torro-forms' ),
-						'all'   => __( 'All submission', 'torro-forms' )
+			'fields' => array(
+				'notification_type' => array(
+					'type' => 'select',
+					'label' => __('Notification Type', 'torro-forms'),
+					'choices' => array(
+						'failed' => __('Only if contact creation failed', 'torro-forms'),
+						'success' => __('Only if contact was created', 'torro-forms'),
+						'all' => __('All submission', 'torro-forms')
 					),
-						'default' => 'failed',
+					'default' => 'failed',
 				),
-				'to_email'    => array(
-					'type'          => 'text',
-					'label'                => __( 'To Email', 'torro-forms' ),
-					'input_classes'        => array( 'regular-text' )
+				'to_email' => array(
+					'type' => 'text',
+					'label' => __('To Email', 'torro-forms'),
+					'input_classes' => array('regular-text')
 				),
-				'cc_email'    => array(
-					'type'          => 'text',
-					'label'                => _x( 'Cc', 'email', 'torro-forms' ),
-					'input_classes'        => array( 'regular-text' ),
+				'cc_email' => array(
+					'type' => 'text',
+					'label' => _x('Cc', 'email', 'torro-forms'),
+					'input_classes' => array('regular-text'),
 				),
-				'subject'     => array(
-					'type'          => 'text',
-					'label'                => __( 'Subject', 'torro-forms' ),
-					'input_classes'        => array( 'regular-text' ),
+				'subject' => array(
+					'type' => 'text',
+					'label' => __('Subject', 'torro-forms'),
+					'input_classes' => array('regular-text'),
 				)
 			),
 		);
@@ -198,130 +230,131 @@ class AXcelerate_Contact extends Action implements Assets_Submodule_Interface {
 	 *
 	 * @since 1.0.0
 	 */
-	protected function register_template_tag_handlers() {
+	protected function register_template_tag_handlers()
+	{
 		$tags = array(
-			'sitetitle'          => array(
-				'group'       => 'global',
-				'label'       => __( 'Site Title', 'torro-forms' ),
-				'description' => __( 'Inserts the site title.', 'torro-forms' ),
-				'callback'    => function() {
-					return get_bloginfo( 'name' );
+			'sitetitle' => array(
+				'group' => 'global',
+				'label' => __('Site Title', 'torro-forms'),
+				'description' => __('Inserts the site title.', 'torro-forms'),
+				'callback' => function () {
+					return get_bloginfo('name');
 				},
 			),
-			'siteurl'            => array(
-				'group'       => 'global',
-				'label'       => __( 'Site URL', 'torro-forms' ),
-				'description' => __( 'Inserts the site home URL.', 'torro-forms' ),
-				'callback'    => function() {
-					return home_url( '/' );
+			'siteurl' => array(
+				'group' => 'global',
+				'label' => __('Site URL', 'torro-forms'),
+				'description' => __('Inserts the site home URL.', 'torro-forms'),
+				'callback' => function () {
+					return home_url('/');
 				},
 			),
-			'adminemail'         => array(
-				'group'       => 'global',
-				'label'       => __( 'Site Admin Email', 'torro-forms' ),
-				'description' => __( 'Inserts the site admin email.', 'torro-forms' ),
-				'callback'    => function() {
-					return get_option( 'admin_email' );
+			'adminemail' => array(
+				'group' => 'global',
+				'label' => __('Site Admin Email', 'torro-forms'),
+				'description' => __('Inserts the site admin email.', 'torro-forms'),
+				'callback' => function () {
+					return get_option('admin_email');
 				},
 			),
-			'userip'             => array(
-				'group'       => 'global',
-				'label'       => __( 'User IP', 'torro-forms' ),
-				'description' => __( 'Inserts the current user IP address.', 'torro-forms' ),
-				'callback'    => function() {
-					$validated_ip = Fixes::php_filter_input( INPUT_SERVER, 'REMOTE_ADDR', FILTER_VALIDATE_IP );
-					if ( empty( $validated_ip ) ) {
+			'userip' => array(
+				'group' => 'global',
+				'label' => __('User IP', 'torro-forms'),
+				'description' => __('Inserts the current user IP address.', 'torro-forms'),
+				'callback' => function () {
+					$validated_ip = Fixes::php_filter_input(INPUT_SERVER, 'REMOTE_ADDR', FILTER_VALIDATE_IP);
+					if (empty($validated_ip)) {
 						return '0.0.0.0';
 					}
 					return $validated_ip;
 				},
 			),
-			'refererurl'         => array(
-				'group'       => 'global',
-				'label'       => __( 'Referer URL', 'torro-forms' ),
-				'description' => __( 'Inserts the current referer URL.', 'torro-forms' ),
-				'callback'    => function() {
+			'refererurl' => array(
+				'group' => 'global',
+				'label' => __('Referer URL', 'torro-forms'),
+				'description' => __('Inserts the current referer URL.', 'torro-forms'),
+				'callback' => function () {
 					return wp_get_referer();
 				},
 			),
-			'formtitle'          => array(
-				'group'       => 'form',
-				'label'       => __( 'Form Title', 'torro-forms' ),
-				'description' => __( 'Inserts the form title.', 'torro-forms' ),
-				'callback'    => function( $form ) {
+			'formtitle' => array(
+				'group' => 'form',
+				'label' => __('Form Title', 'torro-forms'),
+				'description' => __('Inserts the form title.', 'torro-forms'),
+				'callback' => function ($form) {
 					return $form->title;
 				},
 			),
-			'formurl'            => array(
-				'group'       => 'form',
-				'label'       => __( 'Form URL', 'torro-forms' ),
-				'description' => __( 'Inserts the URL to the form.', 'torro-forms' ),
-				'callback'    => function( $form ) {
-					return get_permalink( $form->id );
+			'formurl' => array(
+				'group' => 'form',
+				'label' => __('Form URL', 'torro-forms'),
+				'description' => __('Inserts the URL to the form.', 'torro-forms'),
+				'callback' => function ($form) {
+					return get_permalink($form->id);
 				},
 			),
-			'formediturl'        => array(
-				'group'       => 'form',
-				'label'       => __( 'Form Edit URL', 'torro-forms' ),
-				'description' => __( 'Inserts the edit URL for the form.', 'torro-forms' ),
-				'callback'    => function( $form ) {
-					return get_edit_post_link( $form->id );
+			'formediturl' => array(
+				'group' => 'form',
+				'label' => __('Form Edit URL', 'torro-forms'),
+				'description' => __('Inserts the edit URL for the form.', 'torro-forms'),
+				'callback' => function ($form) {
+					return get_edit_post_link($form->id);
 				},
 			),
-			'submissionurl'      => array(
-				'group'       => 'submission',
-				'label'       => __( 'Submission URL', 'torro-forms' ),
-				'description' => __( 'Inserts the URL to the submission.', 'torro-forms' ),
-				'callback'    => function( $form, $submission ) {
-					return add_query_arg( 'torro_submission_id', $submission->id, get_permalink( $form->id ) );
+			'submissionurl' => array(
+				'group' => 'submission',
+				'label' => __('Submission URL', 'torro-forms'),
+				'description' => __('Inserts the URL to the submission.', 'torro-forms'),
+				'callback' => function ($form, $submission) {
+					return add_query_arg('torro_submission_id', $submission->id, get_permalink($form->id));
 				},
 			),
-			'submissionediturl'  => array(
-				'group'       => 'submission',
-				'label'       => __( 'Submission Edit URL', 'torro-forms' ),
-				'description' => __( 'Inserts the edit URL for the submission.', 'torro-forms' ),
-				'callback'    => function( $form, $submission ) {
+			'submissionediturl' => array(
+				'group' => 'submission',
+				'label' => __('Submission Edit URL', 'torro-forms'),
+				'description' => __('Inserts the edit URL for the submission.', 'torro-forms'),
+				'callback' => function ($form, $submission) {
 					return add_query_arg(
 						array(
 							'post_type' => torro()->post_types()->get_prefix() . 'form',
-							'page'      => torro()->admin_pages()->get_prefix() . 'edit_submission',
-							'id'        => $submission->id,
+							'page' => torro()->admin_pages()->get_prefix() . 'edit_submission',
+							'id' => $submission->id,
 						),
-						admin_url( 'edit.php' )
+						admin_url('edit.php')
 					);
 				},
 			),
 			'submissiondatetime' => array(
-				'group'       => 'submission',
-				'label'       => __( 'Submission Date and Time', 'torro-forms' ),
-				'description' => __( 'Inserts the submission date and time.', 'torro-forms' ),
-				'callback'    => function( $form, $submission ) {
-					$date = $submission->format_datetime( get_option( 'date_format' ), false );
-					$time = $submission->format_datetime( get_option( 'time_format' ), false );
+				'group' => 'submission',
+				'label' => __('Submission Date and Time', 'torro-forms'),
+				'description' => __('Inserts the submission date and time.', 'torro-forms'),
+				'callback' => function ($form, $submission) {
+					$date = $submission->format_datetime(get_option('date_format'), false);
+					$time = $submission->format_datetime(get_option('time_format'), false);
 
 					/* translators: 1: formatted date, 2: formatted time */
-					return sprintf( _x( '%1$s at %2$s', 'concatenating date and time', 'torro-forms' ), $date, $time );
+					return sprintf(_x('%1$s at %2$s', 'concatenating date and time', 'torro-forms'), $date, $time);
 				},
 			),
 		);
 
 		$complex_tags = array(
 			'allelements' => array(
-				'group'       => 'submission',
-				'label'       => __( 'All Element Values', 'torro-forms' ),
-				'description' => __( 'Inserts all element values from the submission.', 'torro-forms' ),
-				'callback'    => function( $form, $submission ) {
+				'group' => 'submission',
+				'label' => __('All Element Values', 'torro-forms'),
+				'description' => __('Inserts all element values from the submission.', 'torro-forms'),
+				'callback' => function ($form, $submission) {
 					$element_columns = array();
-					foreach ( $form->get_elements() as $element ) {
+					foreach ($form->get_elements() as $element) {
 						$element_type = $element->get_element_type();
-						if ( ! $element_type ) {
+						if (!$element_type) {
 							continue;
 						}
 
-						$element_columns[ $element->id ] = array(
-							'columns'  => $element_type->get_export_columns( $element ),
-							'callback' => function( $values ) use ( $element, $element_type ) {
-								return $element_type->format_values_for_export( $values, $element, 'html' );
+						$element_columns[$element->id] = array(
+							'columns' => $element_type->get_export_columns($element),
+							'callback' => function ($values) use ($element, $element_type) {
+								return $element_type->format_values_for_export($values, $element, 'html');
 							},
 						);
 					}
@@ -332,17 +365,17 @@ class AXcelerate_Contact extends Action implements Assets_Submodule_Interface {
 
 					$i = 0;
 
-					foreach ( $element_columns as $element_id => $data ) {
-						$bg_color = ( $i % 2 ) === 1 ? '#ffffff' : '#f2f2f2';
+					foreach ($element_columns as $element_id => $data) {
+						$bg_color = ($i % 2) === 1 ? '#ffffff' : '#f2f2f2';
 
-						$values = isset( $element_values[ $element_id ] ) ? $element_values[ $element_id ] : array();
+						$values = isset($element_values[$element_id]) ? $element_values[$element_id] : array();
 
-						$column_values = call_user_func( $data['callback'], $values );
+						$column_values = call_user_func($data['callback'], $values);
 
-						foreach ( $data['columns'] as $slug => $label ) {
+						foreach ($data['columns'] as $slug => $label) {
 							$output .= '<tr style="background-color:' . $bg_color . '"">';
-							$output .= '<th scope="row" style="text-align:left;vertical-align: top; width:25%; padding: 10px;">' . esc_html( $label ) . '</th>';
-							$output .= '<td style="padding: 10px;">' . wp_kses_post( $column_values[ $slug ] ) . '</td>';
+							$output .= '<th scope="row" style="text-align:left;vertical-align: top; width:25%; padding: 10px;">' . esc_html($label) . '</th>';
+							$output .= '<td style="padding: 10px;">' . wp_kses_post($column_values[$slug]) . '</td>';
 							$output .= '</tr>';
 						}
 
@@ -357,79 +390,86 @@ class AXcelerate_Contact extends Action implements Assets_Submodule_Interface {
 		);
 
 		$groups = array(
-			'submission' => _x( 'Submission', 'template tag group', 'torro-forms' ),
-			'form'       => _x( 'Form', 'template tag group', 'torro-forms' ),
-			'global'     => _x( 'Global', 'template tag group', 'torro-forms' ),
+			'submission' => _x('Submission', 'template tag group', 'torro-forms'),
+			'form' => _x('Form', 'template tag group', 'torro-forms'),
+			'global' => _x('Global', 'template tag group', 'torro-forms'),
 		);
 
-		$this->template_tag_handler  = new Template_Tag_Handler( $this->slug, array_merge( $tags, $complex_tags ), array( Form::class, Submission::class ), $groups );
+		$this->template_tag_handler = new Template_Tag_Handler($this->slug, array_merge($tags, $complex_tags), array(Form::class, Submission::class), $groups);
 
-		$this->module->manager()->template_tag_handlers()->register( $this->template_tag_handler );
+		$this->module->manager()->template_tag_handlers()->register($this->template_tag_handler);
 	}
 
 	/**
 	 * Gets all the dynamic template tags for a form, consisting of the form's element value tags.
 	 *
-	 * @since 1.0.0
-	 *
-	 * @param Form $form        Form for which to get the dynamic template tags.
+	 * @param Form $form Form for which to get the dynamic template tags.
 	 * @param bool $back_compat Optional. Whether to also include back-compat keys for Torro Forms before 1.0.0-beta.9. Default false.
 	 * @return array Dynamic tags as `$slug => $data` pairs.
+	 * @since 1.0.0
+	 *
 	 */
-	protected function get_dynamic_template_tags( $form, $back_compat = false ) {
+	protected function get_dynamic_template_tags($form, $back_compat = false)
+	{
 		$tags = array();
 
-		foreach ( $form->get_elements() as $element ) {
+		foreach ($form->get_elements() as $element) {
 			$element_type = $element->get_element_type();
-			if ( ! $element_type ) {
+			if (!$element_type) {
 				continue;
 			}
 
-			$tags[ 'value_element_' . $element->id ] = array(
-				'group'       => 'submission',
+			$tags['value_element_' . $element->id] = array(
+				'group' => 'submission',
 				/* translators: %s: element label */
-				'label'       => sprintf( __( 'Value for &#8220;%s&#8221;', 'torro-forms' ), $element->label ),
+				'label' => sprintf(__('Value for &#8220;%s&#8221;', 'torro-forms'), $element->label),
 				/* translators: %s: element label */
-				'description' => sprintf( __( 'Inserts the submission value for the element &#8220;%s&#8221;.', 'torro-forms' ), $element->label ),
-				'callback'    => function( $form, $submission ) use ( $element, $element_type ) {
+				'description' => sprintf(__('Inserts the submission value for the element &#8220;%s&#8221;.', 'torro-forms'), $element->label),
+				'callback' => function ($form, $submission) use ($element, $element_type) {
 					$element_values = $submission->get_element_values_data();
-					if ( ! isset( $element_values[ $element->id ] ) ) {
+					if (!isset($element_values[$element->id])) {
 						return '';
 					}
 
-					add_filter( "{$this->module->manager()->get_prefix()}use_single_export_column_for_choices", '__return_true' );
-					$export_values = $element_type->format_values_for_export( $element_values[ $element->id ], $element, 'html' );
-					remove_filter( "{$this->module->manager()->get_prefix()}use_single_export_column_for_choices", '__return_true' );
+					add_filter("{$this->module->manager()->get_prefix()}use_single_export_column_for_choices", '__return_true');
+					$export_values = $element_type->format_values_for_export($element_values[$element->id], $element, 'html');
+					remove_filter("{$this->module->manager()->get_prefix()}use_single_export_column_for_choices", '__return_true');
 
-					if ( ! isset( $export_values[ 'element_' . $element->id . '__main' ] ) ) {
-						if ( count( $export_values ) !== 1 ) {
+					if (!isset($export_values['element_' . $element->id . '__main'])) {
+						if (count($export_values) !== 1) {
 							return '';
 						}
 
-						return array_pop( $export_values );
+						return array_pop($export_values);
 					}
 
-					return $export_values[ 'element_' . $element->id . '__main' ];
+					return $export_values['element_' . $element->id . '__main'];
 				},
 			);
 
 			// Add email support to text fields with input_type 'email_address'.
-			if ( is_a( $element_type, Textfield::class ) ) {
-				$settings = $element_type->get_settings( $element );
-				if ( ! empty( $settings['input_type'] ) && 'email_address' === $settings['input_type'] ) {
-					$tags[ 'value_element_' . $element->id ]['email_support'] = true;
+			if (is_a($element_type, Textfield::class)) {
+				$settings = $element_type->get_settings($element);
+				if (!empty($settings['input_type']) && 'email_address' === $settings['input_type']) {
+					$tags['value_element_' . $element->id]['email_support'] = true;
 				}
 			}
 
-			if ( $back_compat ) {
-				$tags[ $element->label . ':' . $element->id ] = $tags[ 'value_element_' . $element->id ];
+			if ($back_compat) {
+				$tags[$element->label . ':' . $element->id] = $tags['value_element_' . $element->id];
 			}
 		}
 
 		return $tags;
 	}
 
-	private function get_contact_fields() {
+	/**
+	 * List of contact fields in the REST API
+	 *
+	 * @return string[]
+	 */
+	private function get_contact_fields()
+	{
 		return [
 			"givenName" => "Given (first) name. Maximum 40 characters.",
 			"surname" => "Surname (last name). Maximum 40 characters.",
@@ -526,16 +566,17 @@ class AXcelerate_Contact extends Action implements Assets_Submodule_Interface {
 	/**
 	 * Registers all assets the submodule provides.
 	 *
+	 * @param Assets $assets The plugin assets instance.
 	 * @since 1.0.0
 	 *
-	 * @param Assets $assets The plugin assets instance.
 	 */
-	public function register_assets( $assets ) {
-		$template_tag_template  = '<li class="template-tag template-tag-%slug%">';
+	public function register_assets($assets)
+	{
+		$template_tag_template = '<li class="template-tag template-tag-%slug%">';
 		$template_tag_template .= '<button type="button" class="template-tag-button" data-tag="%slug%">%label%</button>';
 		$template_tag_template .= '</li>';
 
-		$template_tag_group_template  = '<li class="template-tag-list-group template-tag-list-group-%slug%">';
+		$template_tag_group_template = '<li class="template-tag-list-group template-tag-list-group-%slug%">';
 		$template_tag_group_template .= '<span>%label%</span>';
 		$template_tag_group_template .= '<ul></ul>';
 		$template_tag_group_template .= '</li>';
@@ -544,19 +585,19 @@ class AXcelerate_Contact extends Action implements Assets_Submodule_Interface {
 			'admin-axcelerate_contact',
 			plugins_url('torro-forms-axcelerate/assets/dist/js/admin-axcelerate-contact.js'),
 			array(
-				'deps'          => array( 'jquery', 'torro-template-tag-fields', 'torro-admin-form-builder' ),
-				'in_footer'     => true,
+				'deps' => array('jquery', 'torro-template-tag-fields', 'torro-admin-form-builder'),
+				'in_footer' => true,
 				'localize_name' => 'torroAXcelerateContact',
 				'localize_data' => array(
 					'templateTagGroupTemplate' => $template_tag_group_template,
-					'templateTagTemplate'      => $template_tag_template,
-					'templateTagSlug'          => 'value_element_%element_id%',
-					'templateTagGroup'         => 'submission',
-					'templateTagGroupLabel'    => _x( 'Submission', 'template tag group', 'torro-forms' ),
+					'templateTagTemplate' => $template_tag_template,
+					'templateTagSlug' => 'value_element_%element_id%',
+					'templateTagGroup' => 'submission',
+					'templateTagGroupLabel' => _x('Submission', 'template tag group', 'torro-forms'),
 					/* translators: %s: element label */
-					'templateTagLabel'         => sprintf( __( 'Value for &#8220;%s&#8221;', 'torro-forms' ), '%element_label%' ),
+					'templateTagLabel' => sprintf(__('Value for &#8220;%s&#8221;', 'torro-forms'), '%element_label%'),
 					/* translators: %s: element label */
-					'templateTagDescription'   => sprintf( __( 'Inserts the submission value for the element &#8220;%s&#8221;.', 'torro-forms' ), '%element_label%' ),
+					'templateTagDescription' => sprintf(__('Inserts the submission value for the element &#8220;%s&#8221;.', 'torro-forms'), '%element_label%'),
 				),
 			)
 		);
@@ -565,26 +606,28 @@ class AXcelerate_Contact extends Action implements Assets_Submodule_Interface {
 	/**
 	 * Enqueues scripts and stylesheets on the form editing screen.
 	 *
+	 * @param Assets $assets The plugin assets instance.
 	 * @since 1.0.0
 	 *
-	 * @param Assets $assets The plugin assets instance.
 	 */
-	public function enqueue_form_builder_assets( $assets ) {
-		$assets->enqueue_script( 'admin-axcelerate_contact' );
+	public function enqueue_form_builder_assets($assets)
+	{
+		$assets->enqueue_script('admin-axcelerate_contact');
 	}
 
 	/**
 	 * Returns the available settings sections for the submodule.
 	 *
+	 * @return array Associative array of `$section_slug => $section_args` pairs.
 	 * @since 1.0.0
 	 *
-	 * @return array Associative array of `$section_slug => $section_args` pairs.
 	 */
-	public function get_settings_sections() {
+	public function get_settings_sections()
+	{
 		$settings_sections = parent::get_settings_sections();
 
 		$settings_sections['axcelerate'] = array(
-			'title' => _x( 'aXcelerate Intergation', 'AXcelerate', 'torro-forms' ),
+			'title' => _x('aXcelerate Intergation', 'AXcelerate', 'torro-forms'),
 		);
 
 		return $settings_sections;
@@ -594,37 +637,38 @@ class AXcelerate_Contact extends Action implements Assets_Submodule_Interface {
 	/**
 	 * Returns the available settings fields for the submodule.
 	 *
+	 * @return array Associative array of `$field_slug => $field_args` pairs.
 	 * @since 1.0.0
 	 *
-	 * @return array Associative array of `$field_slug => $field_args` pairs.
 	 */
-	public function get_settings_fields() {
+	public function get_settings_fields()
+	{
 		$settings_fields = parent::get_settings_fields();
 
 		$settings_fields['api_base_url'] = array(
-			'section'       => 'axcelerate',
-			'type'          => 'text',
-			'label'         => _x( 'API Base URL', 'AXcelerate', 'torro-forms' ),
-			'description'   => sprintf( __( 'The public site key of your website for Google reCAPTCHA. You can get one <a href="%s" target="_blank">here</a>.', 'torro-forms' ), 'https://www.google.com/recaptcha/admin' ),
-			'input_classes' => array( 'regular-text' ),
+			'section' => 'axcelerate',
+			'type' => 'text',
+			'label' => _x('API Base URL', 'AXcelerate', 'torro-forms'),
+			'description' => sprintf(__('The public site key of your website for Google reCAPTCHA. You can get one <a href="%s" target="_blank">here</a>.', 'torro-forms'), 'https://www.google.com/recaptcha/admin'),
+			'input_classes' => array('regular-text'),
 		);
 
 		$settings_fields['api_token'] = array(
-			'section'       => 'axcelerate',
-			'type'          => 'text',
-			'label'         => _x( 'API Token', 'AXcelerate', 'torro-forms' ),
+			'section' => 'axcelerate',
+			'type' => 'text',
+			'label' => _x('API Token', 'AXcelerate', 'torro-forms'),
 			/* translators: %s: URL to Google reCAPTCHA console */
-			'description'   => sprintf( __( 'The secret key of your website for Google reCAPTCHA. You can get one <a href="%s" target="_blank">here</a>.', 'torro-forms' ), 'https://www.google.com/recaptcha/admin' ),
-			'input_classes' => array( 'regular-text' ),
+			'description' => sprintf(__('The secret key of your website for Google reCAPTCHA. You can get one <a href="%s" target="_blank">here</a>.', 'torro-forms'), 'https://www.google.com/recaptcha/admin'),
+			'input_classes' => array('regular-text'),
 		);
 
 		$settings_fields['ws_token'] = array(
-			'section'       => 'axcelerate',
-			'type'          => 'text',
-			'label'         => _x( 'WS Token', 'AXcelerate', 'torro-forms' ),
+			'section' => 'axcelerate',
+			'type' => 'text',
+			'label' => _x('WS Token', 'AXcelerate', 'torro-forms'),
 			/* translators: %s: URL to Google reCAPTCHA console */
-			'description'   => sprintf( __( 'The secret key of your website for Google reCAPTCHA. You can get one <a href="%s" target="_blank">here</a>.', 'torro-forms' ), 'https://www.google.com/recaptcha/admin' ),
-			'input_classes' => array( 'regular-text' ),
+			'description' => sprintf(__('The secret key of your website for Google reCAPTCHA. You can get one <a href="%s" target="_blank">here</a>.', 'torro-forms'), 'https://www.google.com/recaptcha/admin'),
+			'input_classes' => array('regular-text'),
 		);
 
 		return $settings_fields;
