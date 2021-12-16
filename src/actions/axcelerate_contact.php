@@ -103,14 +103,13 @@ class AXcelerate_Contact extends Action implements Assets_Submodule_Interface
 
 		$notifications = $this->get_form_option($form->id, 'responsenotifications', array());
 		$message = $contactCreated
-			? "SUCCESSFULLY created Contact record in AXcelerate\n\n"
-			: "FAILED to create Contact record in AXcelerate\n\n";
-		$message .= "*********************************************************\nREQUEST:\n-------------------\n"
-			. json_encode($payload, JSON_PRETTY_PRINT) . "\n\n";
-		$message .= "*********************************************************\nRESPONSE:\n-------------------\n"
-			. json_encode($response_body, JSON_PRETTY_PRINT) . "\n\n";
-		$message .= "*********************************************************\n";
-
+			? "<h1 style='color: darkgreen;'>SUCCESSFULLY created Contact record in AXcelerate</h1>"
+			: "<h1 style='color: darkred;'>FAILED to create Contact record in AXcelerate</h1>";
+		$message .= "<hr /><h3>REQUEST</h3><pre>"
+			. json_encode($payload, JSON_PRETTY_PRINT) . "</pre>";
+		$message .= "<hr /><h3>RESPONSE</h3><pre>"
+			. json_encode($response_body, JSON_PRETTY_PRINT) . "</pre><hr />";
+		add_filter('wp_mail_content_type', array($this, 'override_content_type'));
 		foreach ($notifications as $notification) {
 			$message = $this->wrap_message(wpautop($message), $notification['subject']);
 
@@ -127,10 +126,21 @@ class AXcelerate_Contact extends Action implements Assets_Submodule_Interface
 			}
 			@wp_mail($notification['to_email'], $notification['subject'], $message, $headers);
 		}
-
+		remove_filter('wp_mail_content_type', array($this, 'override_content_type'));
 		return true;
 	}
 
+	/**
+	 * Gets the email content type.
+	 *
+	 * @return string Email content type.
+	 * @since 1.0.0
+	 *
+	 */
+	public function override_content_type()
+	{
+		return 'text/html';
+	}
 
 	/**
 	 * Wraps the message in valid presentational HTML markup.
