@@ -64,7 +64,14 @@ class AXcelerate_Contact extends Action implements Assets_Submodule_Interface
 			return true;
 		}
 		$fieldsMapping = $this->get_form_option($form->id, 'fieldsmapping', array());
-		if (!isset($fieldsMapping) || count($fieldsMapping) <= 0) {
+		$api_base_url = $this->get_option('api_base_url');
+		$api_token = $this->get_option('api_token');
+		$ws_token = $this->get_option('ws_token');
+
+		if ((!isset($fieldsMapping) || count($fieldsMapping) <= 0)
+			|| (!isset($api_base_url) || empty($api_base_url))
+			|| (!isset($api_token) || empty($api_token))
+			|| (!isset($ws_token) || empty($ws_token))) {
 			return true;
 		}
 
@@ -77,12 +84,21 @@ class AXcelerate_Contact extends Action implements Assets_Submodule_Interface
 		$payload = array();
 		foreach ($fieldsMapping as $key => $value) {
 			if (isset($value) && !empty($value)) {
-				$payload[$key] = $this->template_tag_handler->process_content($value, array($form, $submission));
+				$payload[$key] = $this->template_tag_handler
+					->process_content($value, array($form, $submission));
 			}
 		}
-		$api_base_url = $this->get_option('api_base_url');
-		$api_token = $this->get_option('api_token');
-		$ws_token = $this->get_option('ws_token');
+		$cusromFieldsMapping = $this->get_form_option($form->id, 'customfieldsmapping', array());
+		if (isset($cusromFieldsMapping) && count($cusromFieldsMapping) > 0) {
+			foreach ($cusromFieldsMapping as $key => $value) {
+				if (isset($value) && isset($value['name']) && isset($value['value'])
+					&& !empty($value['name']) && !empty($value['value'])) {
+					$payload["customField_" . $value['name']] = $this->template_tag_handler
+						->process_content($value['value'], array($form, $submission));
+				}
+			}
+		}
+
 		$endpoint = $api_base_url . self::CONTACT_PATH;
 
 		$request = array(
@@ -192,13 +208,30 @@ class AXcelerate_Contact extends Action implements Assets_Submodule_Interface
 				'template_tag_handler' => $this->template_tag_handler,
 			);
 		}
-
 		$meta_fields['fieldsmapping'] = array(
 			'type' => 'group',
 			'label' => __('Fields Mapping', 'torro-forms'),
 			'fields' => $contactFields
 		);
+		$meta_fields['customfieldsmapping'] = array(
+			'type' => 'group',
+			'label' => __('Custom Fields Mapping', 'torro-forms'),
+			'repeatable' => 15,
+			'fields' => array(
+				'name' => array(
+					'type' => 'text',
+					'label' => __('Custom Field Name', 'torro-forms'),
+					'input_classes' => array('regular-text'),
+				),
+				'value' => array(
+					'type' => 'templatetagtext',
+					'label' => _x('Custom Field Value', 'torro-forms'),
+					'input_classes' => array('regular-text'),
+					'template_tag_handler' => $this->template_tag_handler,
+				),
+			)
 
+		);
 		$meta_fields['responsenotifications'] = array(
 			'type' => 'group',
 			'label' => __('Response Notifications', 'torro-forms'),
@@ -659,7 +692,10 @@ class AXcelerate_Contact extends Action implements Assets_Submodule_Interface
 			'section' => 'axcelerate',
 			'type' => 'text',
 			'label' => _x('API Base URL', 'AXcelerate', 'torro-forms'),
-			'description' => sprintf(__('The public site key of your website for Google reCAPTCHA. You can get one <a href="%s" target="_blank">here</a>.', 'torro-forms'), 'https://www.google.com/recaptcha/admin'),
+			'description' => sprintf(
+				__('The API base URL for the aXcelerate API. You can get more help <a href="%s" target="_blank">here</a>.'
+					, 'torro-forms')
+				, 'https://app.axcelerate.com/apidocs/home'),
 			'input_classes' => array('regular-text'),
 		);
 
@@ -667,8 +703,10 @@ class AXcelerate_Contact extends Action implements Assets_Submodule_Interface
 			'section' => 'axcelerate',
 			'type' => 'text',
 			'label' => _x('API Token', 'AXcelerate', 'torro-forms'),
-			/* translators: %s: URL to Google reCAPTCHA console */
-			'description' => sprintf(__('The secret key of your website for Google reCAPTCHA. You can get one <a href="%s" target="_blank">here</a>.', 'torro-forms'), 'https://www.google.com/recaptcha/admin'),
+			'description' => sprintf(
+				__('The API Token for the aXcelerate API. You can create the tokens in the aXcelerate admin section under Settings &#62; System Settings &#62; <a href="%s">Web & Other Integrations</a>.'
+					, 'torro-forms')
+				, 'https://admin.axcelerate.com.au/management/dashboard/index.cfm?tab=WEB'),
 			'input_classes' => array('regular-text'),
 		);
 
@@ -676,8 +714,10 @@ class AXcelerate_Contact extends Action implements Assets_Submodule_Interface
 			'section' => 'axcelerate',
 			'type' => 'text',
 			'label' => _x('WS Token', 'AXcelerate', 'torro-forms'),
-			/* translators: %s: URL to Google reCAPTCHA console */
-			'description' => sprintf(__('The secret key of your website for Google reCAPTCHA. You can get one <a href="%s" target="_blank">here</a>.', 'torro-forms'), 'https://www.google.com/recaptcha/admin'),
+			'description' => sprintf(
+				__('The Web Service Token for the aXcelerate API. You can create the tokens in the aXcelerate admin section under Settings &#62; System Settings &#62; <a href="%s">Web & Other Integrations</a>.'
+					, 'torro-forms')
+				, 'https://admin.axcelerate.com.au/management/dashboard/index.cfm?tab=WEB'),
 			'input_classes' => array('regular-text'),
 		);
 

@@ -87,10 +87,10 @@
 		}
 	}
 
+	var fieldManagerInstanceId = $( '#torro_module_actions-field-manager-instance' ).val();
 	builder.on( 'addElement', function( model ) {
 		elementModels[ model.get( 'id' ) ] = model;
-
-		$( '#torro_8_axcelerate-contact--fieldsmapping .template-tag-list' ).each( function() {
+		$( '#'+fieldManagerInstanceId+'_axcelerate-contact--fieldsmapping .template-tag-list' ).each( function() {
 			initializeElementForList( model, $( this ) );
 		});
 	});
@@ -100,7 +100,7 @@
 			delete elementModels[ model.get( 'id' ) ];
 		}
 
-		$( '#torro_8_axcelerate-contact--fieldsmapping .template-tag-list' ).each( function() {
+		$( '#'+fieldManagerInstanceId+'_axcelerate-contact--fieldsmapping .template-tag-list' ).each( function() {
 			removeTemplateTagForElement( model, $( this ) );
 		});
 	});
@@ -108,6 +108,7 @@
 	$( document ).ready( function() {
 		var fieldManagerInstanceId = $( '#torro_module_actions-field-manager-instance' );
 		var fieldMappings;
+		var customfieldMappings;
 
 
 		if ( ! fieldManagerInstanceId ) {
@@ -115,23 +116,38 @@
 		}
 
 		fieldManagerInstanceId = fieldManagerInstanceId.val();
-		fieldMappings     = fieldsAPI.FieldManager.instances[ fieldManagerInstanceId ].get( fieldManagerInstanceId + '_axcelerate-contact--fieldsmapping' );
+		fieldMappings = fieldsAPI.FieldManager.instances[ fieldManagerInstanceId ].get( fieldManagerInstanceId + '_axcelerate-contact--fieldsmapping' );
+		customfieldMappings = fieldsAPI.FieldManager.instances[ fieldManagerInstanceId ].get( fieldManagerInstanceId + '_axcelerate-contact--customfieldsmapping' );
 		if ( ! fieldMappings ) {
 			return;
 		}
 
 		var canShowFieldMapping = function (){
 			if($('[name="torro_module_actions[axcelerate_contact__enabled]"]').is(":checked")) {
-				$("#torro_7_axcelerate-contact--fieldsmapping-wrap").show();
+				$("#"+fieldManagerInstanceId+"_axcelerate-contact--fieldsmapping-wrap").show();
+				$("#"+fieldManagerInstanceId+"_axcelerate-contact--customfieldsmapping-wrap").show();
+				$("#"+fieldManagerInstanceId+"_axcelerate-contact--responsenotifications-wrap").show();
 			}
 			else {
-				$("#torro_7_axcelerate-contact--fieldsmapping-wrap").hide();
+				$("#"+fieldManagerInstanceId+"_axcelerate-contact--fieldsmapping-wrap").hide();
+				$("#"+fieldManagerInstanceId+"_axcelerate-contact--customfieldsmapping-wrap").hide();
+				$("#"+fieldManagerInstanceId+"_axcelerate-contact--responsenotifications-wrap").hide();
 			}
 		};
 		canShowFieldMapping();
 		$('[name="torro_module_actions[axcelerate_contact__enabled]"]').on('change', canShowFieldMapping);
 
 		fieldMappings.on( 'addItem', function( fieldModel, newItem ) {
+			$( '#' + newItem.id + ' .template-tag-list' ).each( function() {
+				var keys = Object.keys( elementModels );
+				var i;
+
+				for ( i = 0; i < keys.length; i++ ) {
+					initializeElementForList( elementModels[ keys[ i ] ], $( this ) );
+				}
+			});
+		});
+		customfieldMappings.on( 'addItem', function( fieldModel, newItem ) {
 			$( '#' + newItem.id + ' .template-tag-list' ).each( function() {
 				var keys = Object.keys( elementModels );
 				var i;
