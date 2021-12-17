@@ -90,7 +90,8 @@
 	var fieldManagerInstanceId = $( '#torro_module_actions-field-manager-instance' ).val();
 	builder.on( 'addElement', function( model ) {
 		elementModels[ model.get( 'id' ) ] = model;
-		$( '#'+fieldManagerInstanceId+'_axcelerate-contact--fieldsmapping .template-tag-list' ).each( function() {
+		$( '#'+fieldManagerInstanceId+'_axcelerate-contact--fieldsmapping .template-tag-list, '
+			+'#'+fieldManagerInstanceId+'_axcelerate-contact--customfieldsmapping-wrap .template-tag-list' ).each( function() {
 			initializeElementForList( model, $( this ) );
 		});
 	});
@@ -100,7 +101,8 @@
 			delete elementModels[ model.get( 'id' ) ];
 		}
 
-		$( '#'+fieldManagerInstanceId+'_axcelerate-contact--fieldsmapping .template-tag-list' ).each( function() {
+		$( '#'+fieldManagerInstanceId+'_axcelerate-contact--fieldsmapping .template-tag-list, '
+			+'#'+fieldManagerInstanceId+'_axcelerate-contact--customfieldsmapping-wrap .template-tag-list' ).each( function() {
 			removeTemplateTagForElement( model, $( this ) );
 		});
 	});
