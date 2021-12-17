@@ -8,7 +8,7 @@
  * @wordpress-plugin
  * Plugin Name: Torro Forms Plugin aXcelerate
  * Plugin URI:  https://github.com/vtsr60/torro-forms-axcelerate
- * Description: Torro Forms Plugin create contact in aXcelerate SMS.
+ * Description: Torro Forms Plugin to create contact in aXcelerate SMS.
  * Version:     1.0.0
  * Author:      Raj Vivakaran
  * Author URI:  https://github.com/vtsr60

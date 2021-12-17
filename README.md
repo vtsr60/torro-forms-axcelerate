@@ -7,7 +7,7 @@ This is a plugin for Torro Forms to create contact in aXcelerate SMS using thier
 ## Requirements
 
 1. This plugin requires at least PHP 5.6, WordPress 4.8 and Torro Forms 1.x+ in order to work.
-2. API tokens for aXcelerate SMS - [https://app.axcelerate.com/apidocs/home](https://app.axcelerate.com/apidocs/home)
+2. API and Web Service token for aXcelerate SMS. You can create the tokens in the aXcelerate admin section under Settings &#62; System Settings &#62; [Web & Other Integrations](https://admin.axcelerate.com.au/management/dashboard/index.cfm?tab=WEB)
 
 ## Installation
 
