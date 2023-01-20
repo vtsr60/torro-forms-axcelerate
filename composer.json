@@ -1,7 +1,7 @@
 {
 	"name": "vtsr60/torro-forms-axcelerate",
 	"description": "Torro Forms Plugin to create contact in aXcelerate SMS.",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"license": "GPL-2.0-or-later",
 	"type": "wordpress-plugin",
 	"keywords": [
