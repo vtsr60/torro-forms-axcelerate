@@ -83,16 +83,21 @@ trait Title_Choice_Element_Type_Trait
 	{
 		$split_choices = array();
 		foreach ($choices as $choice) {
-			list($value, $title) = explode($this->title_delemiter, $choice);
-			$value = trim($value);
-			$title = trim($title);
-			if (!isset($title) || empty($title)) {
-				$title = $value;
+			if (preg_match('/\|/', $choice)) {
+				list($value, $title) = explode($this->title_delemiter, $choice);
+				$value = trim($value);
+				$title = trim($title);
+				if (!isset($title) || empty($title)) {
+					$title = $value;
+				}
+				if (!isset($value) || empty($value)) {
+					$value = $title;
+				}
+				$split_choices[$value] = $title;
 			}
-			if (!isset($value) || empty($value)) {
-				$value = $title;
+			else {
+				$split_choices[$choice] = $choice;
 			}
-			$split_choices[$value] = $title;
 		}
 		return $split_choices;
 	}

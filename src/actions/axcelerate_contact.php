@@ -216,7 +216,7 @@ class AXcelerate_Contact extends Action implements Assets_Submodule_Interface
 		$meta_fields['customfieldsmapping'] = array(
 			'type' => 'group',
 			'label' => __('Custom Fields Mapping', 'torro-forms'),
-			'repeatable' => 15,
+			'repeatable' => 50,
 			'fields' => array(
 				'name' => array(
 					'type' => 'text',
